@@ -23,6 +23,7 @@
     "multer": "^2.2.0",
     "multer-s3": "^3.0.1",
     "nodemailer": "^9.0.5",
+    "qrcode": "^1.5.4",
     "uuid": "^14.0.2"
   },
   "devDependencies": {

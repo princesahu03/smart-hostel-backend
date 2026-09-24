@@ -53,6 +53,53 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 
+
+
+  // QR Code (unique per student):
+  qrCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    default: null
+  },
+
+  // Current status:
+  currentStatus: {
+  type: String,
+  enum: ['inside', 'outside'],
+  default: 'inside'
+  },
+
+  // Parent contact:
+  parentPhone: {
+  type: String,
+  default: null
+  },
+
+  parentEmail: {
+  type: String,
+  default: null
+  },
+
+  // Curfew violations:
+  curfewViolations: {
+  type: Number,
+  default: 0
+  },
+
+  // Department info:
+  department: {
+  type: String,
+  default: null
+  // e.g. "CSE", "AI/ML", "Cyber Security"
+  },
+
+  gender: {
+  type: String,
+  enum: ['male', 'female', 'other'],
+  default: null
+  },
+
   // S3 URLs:
   photo: {
     type: String,
