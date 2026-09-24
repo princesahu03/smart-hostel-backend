@@ -10,6 +10,7 @@ import complaintRoutes from'./routes/complaint.routes.js'
 import visitorRoutes from'./routes/visitor.routes.js'
 import noticeRoutes from'./routes/notice.routes.js'
 import qrRoutes from './routes/qr.routes.js'
+import analyticsRoutes from'./routes/analytics.routes.js'
 
 const app = express()
 
@@ -49,6 +50,7 @@ app.use('/api/v1/complaints', complaintRoutes)
 app.use('/api/v1/visitors', visitorRoutes)
 app.use('/api/v1/notices', noticeRoutes)
 app.use('/api/v1/qr', qrRoutes)
+app.use('/api/v1/analytics', analyticsRoutes)
 
 // ── 404 ──
 app.use('/{*path}', (req, res) => {
