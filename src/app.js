@@ -12,6 +12,7 @@ import noticeRoutes from'./routes/notice.routes.js'
 import qrRoutes from './routes/qr.routes.js'
 import analyticsRoutes from'./routes/analytics.routes.js'
 import messRoutes from'./routes/mess.routes.js'
+import feeRoutes from './routes/fee.routes.js'
 
 const app = express()
 
@@ -53,6 +54,7 @@ app.use('/api/v1/notices', noticeRoutes)
 app.use('/api/v1/qr', qrRoutes)
 app.use('/api/v1/analytics', analyticsRoutes)
 app.use('/api/v1/mess', messRoutes)
+app.use('/api/v1/fees', feeRoutes)
 
 // ── 404 ──
 app.use('/{*path}', (req, res) => {
