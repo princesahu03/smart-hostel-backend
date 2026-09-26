@@ -116,6 +116,20 @@ const userSchema = new mongoose.Schema({
     }
   },
 
+  // Staff skills:
+  skills: [{
+  type: String,
+  enum: [
+    'maintenance',
+    'plumbing',
+    'internet',
+    'cleanliness',
+    'mess',
+    'security',
+    'electricity'
+  ]
+  }],
+
   // Status:
   isActive: {
     type: Boolean,

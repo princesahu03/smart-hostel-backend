@@ -4,7 +4,9 @@ import {
   getMyComplaints,
   getAllComplaints,
   updateComplaintStatus,
+  confirmResolution,
   getComplaintAnalytics,
+  getStaffComplaints,
   deleteComplaint
 } from
   '../controllers/complaint.controller.js'
@@ -13,28 +15,38 @@ import {
   isAdmin,
   isAdminOrStaff
 } from '../middlewares/auth.middleware.js'
-import { uploadToS3 } from '../config/s3.js'
+import { uploadToS3 } from
+  '../config/s3.js'
 
 const router = Router()
 router.use(verifyJWT)
 
-// Student routes:
-router.route('/').post(
+// Student:
+router.route('/create').post(
   uploadToS3('complaints').single('photo'),
   createComplaint
 )
 router.route('/my').get(getMyComplaints)
-router.route('/:complaintId')
-  .delete(deleteComplaint)
+router.route('/:complaintId/confirm')
+  .patch(confirmResolution)
 
-// Admin/Staff routes:
+// Staff:
+router.route('/staff')
+  .get(getStaffComplaints)
+
+// Admin:
 router.route('/all')
-  .get(isAdminOrStaff, getAllComplaints)
+  .get(isAdmin, getAllComplaints)
 router.route('/analytics')
-  .get(isAdminOrStaff,
-    getComplaintAnalytics)
+  .get(isAdmin, getComplaintAnalytics)
 router.route('/:complaintId/status')
-  .patch(isAdminOrStaff,
-    updateComplaintStatus)
+  .patch(
+    isAdminOrStaff,
+    uploadToS3('complaints')
+      .single('photo'),
+    updateComplaintStatus
+  )
+router.route('/:complaintId')
+  .delete(isAdmin, deleteComplaint)
 
 export default router
