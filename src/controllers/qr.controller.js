@@ -10,6 +10,10 @@ import { ApiResponse } from
   '../utils/ApiResponse.js'
 import { asyncHandler } from
   '../utils/asyncHandler.js'
+import { CurfewViolation } from
+  '../models/curfewViolation.model.js'
+import { Curfew } from
+  '../models/curfew.model.js'
 
 // ── Generate QR for Student ──
 const generateStudentQR = asyncHandler(
@@ -109,17 +113,75 @@ const scanQR = asyncHandler(
       }
     }
 
-    // Check curfew (10 PM):
-    const now = new Date()
-    const hours = now.getHours()
-    const minutes = now.getMinutes()
-    const curfewHour = 22 // 10 PM
-    let isLate = false
+    // Check curfew settings:
+const curfewSettings =
+  await Curfew.findOne({
+    isActive: true
+  })
 
-    if (type === 'entry') {
-      isLate = hours >= curfewHour ||
-        (hours === curfewHour &&
-          minutes > 0)
+const now = new Date()
+const hours = now.getHours()
+const minutes = now.getMinutes()
+let isLate = false
+let minutesLate = 0
+
+if (type === 'entry' &&
+    curfewSettings?.isActive) {
+  // Weekday or weekend:
+  const dayOfWeek = now.getDay()
+  const isWeekend =
+    dayOfWeek === 0 ||
+    dayOfWeek === 6
+
+  const curfewTimeStr = isWeekend
+    ? curfewSettings.weekendTime
+    : curfewSettings.weekdayTime
+
+  const [curfewHour, curfewMin] =
+    curfewTimeStr.split(':')
+      .map(Number)
+
+  // Current time in minutes:
+  const currentMinutes =
+    hours * 60 + minutes
+  const curfewMinutes =
+    curfewHour * 60 + curfewMin
+  const graceMinutes =
+    curfewSettings.gracePeriod || 15
+
+  if (currentMinutes >
+      curfewMinutes + graceMinutes) {
+    isLate = true
+    minutesLate = currentMinutes -
+      curfewMinutes
+
+    // Create violation record:
+    const totalViolations = await
+      CurfewViolation.countDocuments({
+        student: student._id
+      })
+
+    const warningLevel =
+      totalViolations < 2 ? 1
+      : totalViolations < 4 ? 2 : 3
+
+    const violation = await
+      CurfewViolation.create({
+        student: student._id,
+        entryTime: now,
+        curfewTime: curfewTimeStr,
+        minutesLate,
+        dayType: isWeekend
+          ? 'weekend' : 'weekday',
+        qrEntry: entry._id,
+        warningLevel
+      })
+
+    // Update curfew violations count:
+    student.curfewViolations =
+      (student.curfewViolations || 0) + 1
+    await student.save()
+    } 
     }
 
     // Create entry record:
