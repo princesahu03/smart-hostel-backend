@@ -1,19 +1,15 @@
-import { RoomRequest } from
-  '../models/roomRequest.model.js'
+import { RoomRequest } from'../models/roomRequest.model.js'
 import { Room } from '../models/room.model.js'
 import { User } from '../models/user.model.js'
 import { ApiError } from '../utils/ApiError.js'
-import { ApiResponse } from
-  '../utils/ApiResponse.js'
-import { asyncHandler } from
-  '../utils/asyncHandler.js'
+import { ApiResponse } from'../utils/ApiResponse.js'
+import { asyncHandler } from'../utils/asyncHandler.js'
 
 // ── Create Room Request (Student) ──
 const createRoomRequest = asyncHandler(
   async (req, res) => {
     const {
-      requestType,
-      reason,
+      requestType, reason,
       preferredRoomNumber,
       preferredRoommate,
       checkoutDate,
@@ -27,68 +23,55 @@ const createRoomRequest = asyncHandler(
         "Request type and reason required!")
     }
 
-    // Check student has room:
     const student = await User.findById(
       req.user._id
     )
 
-    if (!student.roomNumber &&
-        requestType !== 'room_checkout') {
-      throw new ApiError(400,
-        "You don't have a room allotted!")
-    }
-
-    // Check existing pending request:
-    const existing = await
-      RoomRequest.findOne({
-        student: req.user._id,
-        requestType,
-        status: 'pending'
-      })
+    // Check existing pending:
+    const existing = await RoomRequest.findOne({
+      student: req.user._id,
+      requestType,
+      status: 'pending'
+    })
 
     if (existing) {
       throw new ApiError(409,
-        "You already have a pending " +
-        `${requestType} request!`)
+        `Pending ${requestType} request already exists!`)
     }
 
-    // Find preferred room:
+    // Find preferred room if given:
     let preferredRoomId = null
     if (preferredRoomNumber) {
       const room = await Room.findOne({
         roomNumber: preferredRoomNumber
       })
       if (room) {
-        preferredRoomId = room._id
-        // Check room availability:
-        if (room.status === 'full') {
+        if (room.occupants.length >=
+            room.capacity) {
           throw new ApiError(400,
             `Room ${preferredRoomNumber} is full!`)
         }
+        preferredRoomId = room._id
       }
     }
 
-    const request = await
-      RoomRequest.create({
-        student: req.user._id,
-        requestType,
-        currentRoom:
-          student.roomNumber || null,
-        preferredRoom:
-          preferredRoomId || null,
-        preferredRoomNumber:
-          preferredRoomNumber || null,
-        preferredRoommate:
-          preferredRoommate || null,
-        reason,
-        checkoutDate: checkoutDate
-          ? new Date(checkoutDate) : null,
-        swapWithStudent:
-          swapWithStudent || null,
-        swapWithRoom:
-          swapWithRoom || null,
-        priority: priority || 'medium'
-      })
+    const request = await RoomRequest.create({
+      student: req.user._id,
+      requestType,
+      currentRoom: student.roomNumber || null,
+      preferredRoom: preferredRoomId || null,
+      preferredRoomNumber:
+        preferredRoomNumber || null,
+      preferredRoommate:
+        preferredRoommate || null,
+      reason,
+      checkoutDate: checkoutDate
+        ? new Date(checkoutDate) : null,
+      swapWithStudent:
+        swapWithStudent || null,
+      swapWithRoom: swapWithRoom || null,
+      priority: priority || 'medium'
+    })
 
     const populated = await
       RoomRequest.findById(request._id)
@@ -153,10 +136,7 @@ const getAllRequests = asyncHandler(
       .populate('swapWithStudent',
         'name studentId roomNumber')
       .populate('processedBy', 'name')
-      .sort({
-        priority: -1,
-        createdAt: -1
-      })
+      .sort({ priority: -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
 
@@ -167,8 +147,7 @@ const getAllRequests = asyncHandler(
       new ApiResponse(200, {
         requests, total,
         currentPage: Number(page),
-        totalPages:
-          Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit)
       }, "Requests fetched!")
     )
   }
@@ -178,17 +157,15 @@ const getAllRequests = asyncHandler(
 const processRequest = asyncHandler(
   async (req, res) => {
     const { requestId } = req.params
-    const {
-      status, adminRemarks
-    } = req.body
+    const { status, adminRemarks } = req.body
 
     if (!status) {
       throw new ApiError(400,
         "Status required!")
     }
 
-    const request = await
-      RoomRequest.findById(requestId)
+    const request = await RoomRequest
+      .findById(requestId)
       .populate('student')
       .populate('preferredRoom')
       .populate('swapWithStudent')
@@ -198,144 +175,173 @@ const processRequest = asyncHandler(
         "Request not found!")
     }
 
-    // If approving — execute action:
+    // Execute action if approving:
     if (status === 'approved' ||
         status === 'completed') {
 
-      // Room change:
+      // ── Room Change ──
       if (request.requestType ===
           'room_change' &&
           request.preferredRoom) {
-        const oldRoom = await
-          Room.findOne({
+
+        // Remove from old room:
+        if (request.currentRoom) {
+          const oldRoom = await Room.findOne({
             roomNumber: request.currentRoom
           })
-        const newRoom = await
-          Room.findById(
-            request.preferredRoom._id
-          )
 
-        if (oldRoom) {
-          oldRoom.occupants =
-            oldRoom.occupants.filter(
-              id => id.toString() !==
-                request.student._id
-                  .toString()
-            )
-          if (oldRoom.occupants.length 
-              oldRoom.capacity) {
-            oldRoom.status = 'available'
+          if (oldRoom) {
+            oldRoom.occupants =
+              oldRoom.occupants.filter(
+                id => id.toString() !==
+                  request.student._id.toString()
+              )
+
+            if (oldRoom.occupants.length <
+                oldRoom.capacity) {
+              oldRoom.status = 'available'
+            }
+
+            await oldRoom.save()
           }
-          await oldRoom.save()
         }
 
+        // Add to new room:
+        const newRoom = await Room.findById(
+          request.preferredRoom._id
+        )
+
         if (newRoom &&
-            newRoom.currentOccupancy 
+            newRoom.occupants.length <
             newRoom.capacity) {
+
           newRoom.occupants.push(
             request.student._id
           )
+
           if (newRoom.occupants.length >=
               newRoom.capacity) {
             newRoom.status = 'full'
           }
+
           await newRoom.save()
 
-          // Update student room:
           await User.findByIdAndUpdate(
             request.student._id,
-            {
-              roomNumber: newRoom.roomNumber
-            }
+            { roomNumber: newRoom.roomNumber }
           )
         }
+
         request.status = 'completed'
       }
 
-      // Room checkout:
+      // ── Room Checkout ──
       else if (request.requestType ===
                'room_checkout') {
-        const currentRoom = await
-          Room.findOne({
-            roomNumber:
-              request.student.roomNumber
-          })
 
-        if (currentRoom) {
-          currentRoom.occupants =
-            currentRoom.occupants.filter(
-              id => id.toString() !==
-                request.student._id
-                  .toString()
-            )
-          currentRoom.status = 'available'
-          await currentRoom.save()
+        const student = await User.findById(
+          request.student._id
+        )
+
+        if (student && student.roomNumber) {
+          const currentRoom = await
+            Room.findOne({
+              roomNumber: student.roomNumber
+            })
+
+          if (currentRoom) {
+            currentRoom.occupants =
+              currentRoom.occupants.filter(
+                id => id.toString() !==
+                  student._id.toString()
+              )
+            currentRoom.status = 'available'
+            await currentRoom.save()
+          }
+
+          await User.findByIdAndUpdate(
+            student._id,
+            { roomNumber: null }
+          )
         }
 
-        await User.findByIdAndUpdate(
-          request.student._id,
-          { roomNumber: null }
-        )
         request.status = 'completed'
       }
 
-      // Room swap:
+      // ── Room Swap ──
       else if (request.requestType ===
                'room_swap' &&
                request.swapWithStudent) {
-        const student1 = request.student
-        const student2 = await
-          User.findById(
-            request.swapWithStudent
-          )
 
-        if (student1 && student2) {
+        const student1 = await User.findById(
+          request.student._id
+        )
+
+        const swapId =
+          request.swapWithStudent._id ||
+          request.swapWithStudent
+
+        const student2 = await
+          User.findById(swapId)
+
+        if (student1 && student2 &&
+            student1.roomNumber &&
+            student2.roomNumber) {
+
           const room1 = student1.roomNumber
           const room2 = student2.roomNumber
 
+          // Swap student rooms:
           await User.findByIdAndUpdate(
             student1._id,
             { roomNumber: room2 }
           )
+
           await User.findByIdAndUpdate(
             student2._id,
             { roomNumber: room1 }
           )
 
           // Update room occupants:
-          const roomDoc1 = await
-            Room.findOne({
-              roomNumber: room1
-            })
-          const roomDoc2 = await
-            Room.findOne({
-              roomNumber: room2
-            })
+          const roomDoc1 = await Room.findOne({
+            roomNumber: room1
+          })
 
-          if (roomDoc1 && roomDoc2) {
+          const roomDoc2 = await Room.findOne({
+            roomNumber: room2
+          })
+
+          if (roomDoc1) {
             roomDoc1.occupants =
               roomDoc1.occupants.map(id =>
                 id.toString() ===
                 student1._id.toString()
-                  ? student2._id
-                  : id
+                  ? student2._id : id
               )
+            await roomDoc1.save()
+          }
+
+          if (roomDoc2) {
             roomDoc2.occupants =
               roomDoc2.occupants.map(id =>
                 id.toString() ===
                 student2._id.toString()
-                  ? student1._id
-                  : id
+                  ? student1._id : id
               )
-            await roomDoc1.save()
             await roomDoc2.save()
           }
-          request.status = 'completed'
         }
-      } else {
+
+        request.status = 'completed'
+      }
+
+      // ── Other types ──
+      else {
         request.status = status
       }
+
     } else {
+      // Rejected or cancelled:
       request.status = status
     }
 
@@ -350,8 +356,7 @@ const processRequest = asyncHandler(
       RoomRequest.findById(request._id)
       .populate('student',
         'name email roomNumber')
-      .populate('preferredRoom',
-        'roomNumber')
+      .populate('preferredRoom', 'roomNumber')
       .populate('processedBy', 'name')
 
     return res.status(200).json(
@@ -401,8 +406,7 @@ const getAvailableRooms = asyncHandler(
     const rooms = await Room.find({
       status: 'available'
     })
-    .populate('occupants',
-      'name studentId')
+    .populate('occupants', 'name studentId')
     .sort({ floor: 1, roomNumber: 1 })
 
     return res.status(200).json(
