@@ -16,6 +16,9 @@ import feeRoutes from './routes/fee.routes.js'
 import messageRoutes from'./routes/message.routes.js'
 import curfewRoutes from'./routes/curfew.routes.js'
 import roomRequestRoutes from'./routes/roomRequest.routes.js'
+import teacherRoutes from'./routes/teacher.routes.js'
+
+
 const app = express()
 
 app.use(cors({
@@ -60,6 +63,8 @@ app.use('/api/v1/fees', feeRoutes)
 app.use('/api/v1/messages', messageRoutes)
 app.use('/api/v1/curfew', curfewRoutes)
 app.use('/api/v1/room-requests',roomRequestRoutes)
+app.use('/api/v1/teachers', teacherRoutes)
+
 
 // ── 404 ──
 app.use('/{*path}', (req, res) => {

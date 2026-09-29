@@ -1,8 +1,7 @@
 import jwt from 'jsonwebtoken'
 import { User } from '../models/user.model.js'
 import { ApiError } from '../utils/ApiError.js'
-import { asyncHandler } from
-  '../utils/asyncHandler.js'
+import { asyncHandler } from'../utils/asyncHandler.js'
 
 // ── Verify JWT Token ──
 export const verifyJWT = asyncHandler(
@@ -99,3 +98,36 @@ export const isAdminOrStaff = asyncHandler(
   }
   next()
 })
+
+
+
+// ── Teacher Only ──
+export const isTeacher = asyncHandler(
+  async (req, res, next) => {
+    if (req.user?.role !== 'teacher') {
+      throw new ApiError(
+        403,
+        "Teacher access required!"
+      )
+    }
+
+    next()
+  }
+)
+
+// ── Admin or Teacher ──
+export const isAdminOrTeacher = asyncHandler(
+  async (req, res, next) => {
+    if (
+      req.user?.role !== 'admin' &&
+      req.user?.role !== 'teacher'
+    ) {
+      throw new ApiError(
+        403,
+        "Admin or Teacher access required!"
+      )
+    }
+
+    next()
+  }
+)

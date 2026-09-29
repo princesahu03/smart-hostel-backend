@@ -1,9 +1,7 @@
 import { User } from '../models/user.model.js'
 import { ApiError } from '../utils/ApiError.js'
-import { ApiResponse } from
-  '../utils/ApiResponse.js'
-import { asyncHandler } from
-  '../utils/asyncHandler.js'
+import { ApiResponse } from'../utils/ApiResponse.js'
+import { asyncHandler } from'../utils/asyncHandler.js'
 
 // ── Cookie Options ──
 const getCookieOptions = () => {
@@ -317,9 +315,11 @@ const getAllUsers = asyncHandler(
 const createUser = asyncHandler(
   async (req, res) => {
     const {
-      name, email, password,
-      phone, role, studentId,
-      course, year
+      name, email, password, phone, role,
+      studentId, course, year,
+      teacherId, designation,
+      assignedFloor, wardenLevel,
+      subject, officeHours, officeRoom
     } = req.body
 
     if (!name || !email ||
@@ -340,7 +340,15 @@ const createUser = asyncHandler(
       role: role || 'student',
       studentId: studentId || undefined,
       course: course || null,
-      year: year ? Number(year) : null
+      year: year ? Number(year) : null,
+      // Teacher fields:
+      teacherId: teacherId || undefined,
+      designation: designation || null,
+      assignedFloor: assignedFloor ? parseInt(assignedFloor) : null,
+      wardenLevel: wardenLevel || null,
+      subject: subject || null,
+      officeHours: officeHours || null,
+      officeRoom: officeRoom || null
     })
 
     const created = await

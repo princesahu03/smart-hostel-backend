@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ['admin', 'student',
-      'security', 'staff'],
+      'security', 'staff', 'teacher'],
     default: 'student'
   },
 
@@ -129,6 +129,59 @@ const userSchema = new mongoose.Schema({
     'electricity'
   ]
   }],
+
+  // Teacher specific:
+teacherId: {
+  type: String,
+  unique: true,
+  sparse: true,
+  default: null
+},
+
+designation: {
+  type: String,
+  default: null
+  // e.g. "Assistant Professor",
+  // "Floor Warden", "Hostel Warden"
+},
+
+// Floor warden assignment:
+assignedFloor: {
+  type: Number,
+  default: null
+  // Which floor they manage
+},
+
+// Warden hierarchy:
+wardenLevel: {
+  type: String,
+  enum: [
+    'floor_warden',
+    'hostel_warden',
+    'chief_warden',
+    null
+  ],
+  default: null
+},
+
+// Subject/Department:
+subject: {
+  type: String,
+  default: null
+},
+
+  // Office hours:
+  officeHours: {
+    type: String,
+    default: null
+  // e.g. "Mon-Fri 10AM-4PM"
+  },
+
+  // Office room:
+  officeRoom: {
+    type: String,
+    default: null
+  },
 
   // Status:
   isActive: {
