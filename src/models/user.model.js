@@ -58,9 +58,9 @@ const userSchema = new mongoose.Schema({
   // QR Code (unique per student):
   qrCode: {
     type: String,
-    unique: true,
+    //unique: true,
     sparse: true,
-    default: null
+    //default: null
   },
 
   // Current status:
