@@ -16,66 +16,104 @@ const getCookieOptions = () => {
 }
 
 // ── Register ──
+// ── Register ──
 const register = asyncHandler(
   async (req, res) => {
     const {
-        name, email, password,
-        phone, role, studentId,
-        course, year,
-        department, gender,
-        parentPhone, parentEmail  
-  } = req.body
-    // Validation:
-    if (!name || !email ||
-        !password || !phone) {
-      throw new ApiError(400,
-        "Name, email, password, phone required!")
+      name,
+      email,
+      password,
+      phone,
+      role,
+
+      // Student fields
+      studentId,
+      course,
+      year,
+      gender,
+      department,
+      parentPhone,
+
+      // Teacher fields
+      teacherId,
+      designation,
+      subject,
+      officeHours,
+      officeRoom
+    } = req.body
+
+    // Validation
+    if (!name || !email || !password || !phone) {
+      throw new ApiError(
+        400,
+        "Name, email, password, phone required!"
+      )
     }
 
-    // Email already exists:
-    const existedUser = await User.findOne({
-      email
-    })
+    // Email already exists
+    const existedUser = await User.findOne({ email })
+
     if (existedUser) {
-      throw new ApiError(409,
-        "Email already registered!")
+      throw new ApiError(
+        409,
+        "Email already registered!"
+      )
     }
 
-    // StudentId unique check:
+    // Student ID unique check
     if (studentId) {
       const existedStudent =
         await User.findOne({ studentId })
+
       if (existedStudent) {
-        throw new ApiError(409,
-          "Student ID already exists!")
+        throw new ApiError(
+          409,
+          "Student ID already exists!"
+        )
       }
     }
 
-    // Photo S3 URL:
+    // Photo S3 URL
     const photo = req.file
       ? req.file.location
       : null
 
-    // Create user:
+    // Create user
     const user = await User.create({
-      name, email, password, phone,
+      name,
+      email,
+      password,
+      phone,
       role: role || 'student',
-      studentId: studentId || undefined,
-      course: course || null,
-      year: year ? Number(year) : null,
-      department: department || null,  
-      gender: gender || null,          
-      parentPhone: parentPhone || null, 
-      parentEmail: parentEmail || null  
+
+      // Photo
+      ...(photo && { photo }),
+
+      // Student fields
+      ...(studentId && { studentId }),
+      ...(course && { course }),
+      ...(year && { year: Number(year) }),
+      ...(gender && { gender }),
+      ...(department && { department }),
+      ...(parentPhone && { parentPhone }),
+
+      // Teacher fields
+      ...(teacherId && { teacherId }),
+      ...(designation && { designation }),
+      ...(subject && { subject }),
+      ...(officeHours && { officeHours }),
+      ...(officeRoom && { officeRoom })
     })
 
     const createdUser = await
       User.findById(user._id)
-      .select("-password -refreshToken")
+        .select("-password -refreshToken")
 
     if (!createdUser) {
-      throw new ApiError(500,
-        "User creation failed!")
+      throw new ApiError(
+        500,
+        "User creation failed!"
+      )
     }
 
     return res.status(201).json(
